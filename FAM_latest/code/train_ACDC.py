@@ -187,11 +187,9 @@ def grid_dropout_regions(img, grid_width=16, cover_area_ratio=0.20, mode=0):
 
     mask = np.ones((hh, hh), np.float32)
 
-    # 随机确定遮罩起始位置，并进行水平和垂直方向的遮挡
     st_h = np.random.randint(grid_width)
     st_w = np.random.randint(grid_width)
 
-    # 水平方向遮挡
     for i in range(-1, hh // grid_width + 1):
         s = grid_width * i + st_h
         t = s + l
@@ -199,7 +197,6 @@ def grid_dropout_regions(img, grid_width=16, cover_area_ratio=0.20, mode=0):
         t = max(min(t, hh), 0)
         mask[s:t, :] *= 0
 
-    # 垂直方向遮挡
     for i in range(-1, hh // grid_width + 1):
         s = grid_width * i + st_w
         t = s + l
@@ -207,51 +204,39 @@ def grid_dropout_regions(img, grid_width=16, cover_area_ratio=0.20, mode=0):
         t = max(min(t, hh), 0)
         mask[:, s:t] *= 0
 
-    # 裁剪遮罩以适应原图大小
     mask = mask[(hh - h) // 2: (hh - h) // 2 + h, (hh - w) // 2: (hh - w) // 2 + w]
 
-    # 将遮罩转换为Tensor并转到GPU上
     mask = torch.from_numpy(mask).float()
 
-    # 如果 mode == 1，反转遮罩
     if mode == 1:
         mask = 1 - mask
 
     mask=mask.unsqueeze(0).unsqueeze(0).cuda()
     mask = mask.expand_as(img)
 
-    # 应用遮罩到图像上
     img = img * mask
 
     return img
 
 def block_dropout_regions(img, mask_ratio=0.25):
     b,c,h,w=img.shape
-    N = h * w  # 图像补丁的总数
-    M = set()  # 储存遮蔽的补丁位置
+    N = h * w  
+    M = set()  
     while len(M) < mask_ratio * N and int(mask_ratio * N - len(M))>18:
-        # 1. 随机选择块的大小 s
         s = random.randint(16, int(mask_ratio * N - len(M)))
-        # 2. 随机选择块的长宽比 r
         r = random.uniform(0.3, 1 / 0.3)
-        # 3. 根据块的大小和长宽比计算 a 和 b
-        a = int(np.sqrt(s * r))  # 块的高度
-        b = int(np.sqrt(s / r))  # 块的宽度
-        # 4. 确保 a 和 b 不超过图像尺寸，重新生成 r 直到满足条件
+        a = int(np.sqrt(s * r))  
+        b = int(np.sqrt(s / r))  
         while a > h or b > w:
-            r = random.uniform(0.3, 1 / 0.3)  # 重新生成 r
-            a = int(np.sqrt(s * r))  # 重新计算 a
-            b = int(np.sqrt(s / r))  # 重新计算 b
-        # 4. 随机选择块在图像中的位置 (t, l)
-        t = random.randint(0, h - a)  # 起始行
-        l = random.randint(0, w - b)  # 起始列
-        # 5. 生成块的补丁位置并添加到遮蔽列表 M 中
+            r = random.uniform(0.3, 1 / 0.3)  
+            a = int(np.sqrt(s * r))  
+            b = int(np.sqrt(s / r))  
+        t = random.randint(0, h - a)  
+        l = random.randint(0, w - b)  
         for i in range(t, t + a):
             for j in range(l, l + b):
                 M.add((i, j))
-    # 6. 创建掩码矩阵，初始为全 1，表示未遮蔽的区域
     mask = torch.ones((h, w), dtype=torch.float32)
-    # 7. 将遮蔽位置设为 0，表示遮蔽区域
     for i, j in M:
         mask[i, j] = 0
     
@@ -263,10 +248,9 @@ def block_dropout_regions(img, mask_ratio=0.25):
 
 
 def random_dropout_regions_1(batch, p=0.25):
-    # 创建一个随机 mask，随机丢弃某些区域
     mask = (torch.rand(batch.shape[0], 1, batch.shape[2], batch.shape[3]) > p).float().to(batch.device)
-    return batch * mask  # 将 batch 与 mask 相乘，mask 为 0 的区域会被置零
-
+    return batch * mask 
+  
 def random_dropout_regions(batch, grid_size=16, p=0.25):
     B, C, H, W = batch.shape
     mask = torch.ones(B, 1, H, W).to(batch.device)
@@ -324,7 +308,6 @@ def Co_Training(L_t, Y_t, L_s, Y_s, U, teacher, ema_teacher, student, ema_studen
         teacher_initial_output = teacher(L_t)
         teacher_loss_initial_l = loss(teacher_initial_output, Y_t).detach().clone()
     
-    # 对学生模型进行反向传播
     student_optimizer.zero_grad()
     teacher_optimizer.zero_grad()
     
@@ -336,7 +319,6 @@ def Co_Training(L_t, Y_t, L_s, Y_s, U, teacher, ema_teacher, student, ema_studen
     student_optimizer.zero_grad()
     student_loss_initial.backward()
 
-    # 如果不进行近似计算梯度，就保存梯度
     if not approx:
         grads1_s = [param.grad.data.detach().clone() for param in student.parameters()]
 
@@ -518,7 +500,6 @@ def Independent_train(args, snapshot_path):
 
     for epoch_num in iterator:
         for i_batch, sampled_batch in enumerate(trainloader):
-            # label 数据
             volume_batch, label_batch = sampled_batch['image'],  sampled_batch['label']
             volume_batch_strong, label_batch_strong = sampled_batch['image_strong'], sampled_batch['label_strong']
             volume_batch, label_batch = volume_batch.cuda(), label_batch.cuda()
@@ -744,7 +725,6 @@ def Collaborative_train(args, pre_snapshot_path, snapshot_path):
 
     for epoch_num in iterator:
         for i_batch, sampled_batch in enumerate(trainloader):
-            # label 数据
             volume_batch, label_batch = sampled_batch['image'],  sampled_batch['label']
             volume_batch_strong, label_batch_strong = sampled_batch['image_strong'], sampled_batch['label_strong']
             volume_batch, label_batch = volume_batch.cuda(), label_batch.cuda()
@@ -911,7 +891,7 @@ if __name__ == "__main__":
     logging.basicConfig(filename=first_snapshot_path+"/log.txt", level=logging.INFO, format='[%(asctime)s.%(msecs)03d] %(message)s', datefmt='%H:%M:%S')
     logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
     logging.info(str(args))
-    # Independent_train(args, first_snapshot_path)
+    Independent_train(args, first_snapshot_path)
 
     # Collaborative-Learning
     logging.basicConfig(filename=second_snapshot_path + "/log.txt", level=logging.INFO,format='[%(asctime)s.%(msecs)03d] %(message)s', datefmt='%H:%M:%S')
