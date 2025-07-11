@@ -268,7 +268,7 @@ def Co_Training(L_t, Y_t, L_s, Y_s, U, teacher, ema_teacher, student, ema_studen
     
     sub_batch_size = int(U.shape[0] / 2)
     U_t, U_s = get_two_frequency_domain(U)
-
+    ## inner learning: MUD and cross-supervision
     SPL_t = teacher(grid_dropout_regions(U_t[sub_batch_size:,:,:,:]))
     udd_out_t = teacher(U_t[:sub_batch_size,:,:,:])
     with torch.no_grad():
@@ -343,7 +343,7 @@ def Co_Training(L_t, Y_t, L_s, Y_s, U, teacher, ema_teacher, student, ema_studen
     student_final_output = student(L_s)
     
     student_loss_final = loss(student_final_output, Y_s)
-
+    ## outer learning: ASC and supervised loss
     if not approx:
         student_loss_final.backward()
         h_t = sum([(param.grad.data.detach() * grads).sum() for param, grads in zip(student.parameters(),  grads1_s)])
@@ -360,7 +360,7 @@ def Co_Training(L_t, Y_t, L_s, Y_s, U, teacher, ema_teacher, student, ema_studen
 
     teacher_optimizer.zero_grad()
 
-    # compute the teacher MPL loss
+
     if not previous_params:
         if approx:
             # https://github.com/google-research/google-research/issues/536
