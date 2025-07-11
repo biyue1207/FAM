@@ -36,11 +36,11 @@ Download pre-trained [Swin-Unet](https://drive.google.com/drive/folders/1UC3XOoe
 ## 4. Usage
 To train a model,
 ```
-python ./code/train_ACDC.py  # for ACDC training
+python ./code/train.py  # for ACDC training
 ``` 
 To test a model,
 ```
-python ./code/test_ACDC.py  # for ACDC testing
+python ./code/test.py  # for ACDC testing
 ```
 ## Acknowledgements
 Our code is largely based on [ABD](https://raw.githubusercontent.com/chy-upc/ABD), [BCP](https://github.com/DeepMed-Lab-ECNU/BCP), and [SCP-Net](https://arxiv.org/pdf/2305.16214.pdf). Thanks for these authors for their valuable work, hope our work can also contribute to related research.
